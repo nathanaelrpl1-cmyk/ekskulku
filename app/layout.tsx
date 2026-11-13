@@ -1,32 +1,32 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: {
-    template: "%s · EkskulKu",
-    default: "EkskulKu",
-  },
+  title: { default: "EkskulKu", template: "%s • EkskulKu" },
   description: "Sistem Pendaftaran Ekstrakurikuler Sekolah",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ 
+  children 
+}: { 
+  children: React.ReactNode 
+}) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="id" className="antialiased">
+      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+        {/* Bungkus Navbar dengan Suspense agar aman saat prerendering */}
+        <Suspense fallback={<div className="h-14 border-b bg-white" />}>
+          <Navbar />
+        </Suspense>
+
+        <main className="mx-auto w-full max-w-5xl flex-1 p-6">{children}</main>
+        
+        <footer className="border-t bg-white p-4 text-center text-sm text-slate-500">
+          EkskulKu • dibuat di kelas Junior Web Developer
+        </footer>
+      </body>
     </html>
   );
 }
