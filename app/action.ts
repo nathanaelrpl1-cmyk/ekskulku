@@ -14,6 +14,7 @@ export type StateDaftar = {
   kelas?: string;
 };
 
+// 1. Server Action untuk Pendaftaran Ekskul
 export async function aksiDaftar(
   prevState: StateDaftar,
   formData: FormData
@@ -22,7 +23,7 @@ export async function aksiDaftar(
   const nama = String(formData.get("nama") ?? "").trim();
   const kelas = String(formData.get("kelas") ?? "").trim();
 
-  // 1. Validasi per kolom: nama minimal 3 huruf, kelas minimal 3 karakter
+  // Validasi per kolom: nama minimal 3 huruf, kelas minimal 3 karakter
   const galatNama = nama.length < 3 ? "Nama minimal 3 huruf." : undefined;
   const galatKelas = kelas.length < 3 ? "Kelas minimal 3 karakter." : undefined;
 
@@ -30,13 +31,13 @@ export async function aksiDaftar(
     return { galatNama, galatKelas, nama, kelas };
   }
 
-  // 2. Validasi ID ekskul (cegah manipulasi lewat DevTools)
+  // Validasi ID ekskul (cegah manipulasi lewat DevTools)
   const targetEkskul = ekskul.find((e) => e.id === ekskulId);
   if (!targetEkskul) {
     return { galatUmum: "Ekskul tidak ditemukan.", nama, kelas };
   }
 
-  // 3. Validasi sudah terdaftar (case-insensitive untuk nama dan kelas)
+  // Validasi sudah terdaftar (case-insensitive untuk nama dan kelas)
   const sudahAda = pendaftar.some(
     (p) =>
       p.ekskulId === ekskulId &&
@@ -51,7 +52,7 @@ export async function aksiDaftar(
     };
   }
 
-  // 4. Validasi kuota penuh
+  // Validasi kuota penuh
   const terisi = pendaftar.filter((p) => p.ekskulId === ekskulId).length;
   if (terisi >= targetEkskul.kuota) {
     return {
@@ -61,7 +62,7 @@ export async function aksiDaftar(
     };
   }
 
-  // 5. Validasi jadwal bentrok (murid sudah mengikuti ekskul lain pada hari dan sesi yang sama)
+  // Validasi jadwal bentrok (murid sudah mengikuti ekskul lain pada hari dan sesi yang sama)
   const bentrok = pendaftar.find((p) => {
     const samaMurid =
       p.nama.toLowerCase() === nama.toLowerCase() &&
@@ -76,6 +77,20 @@ export async function aksiDaftar(
     );
   });
 
+  const jumlahEkskulDiikuti = pendaftar.filter(
+    (p) =>
+        p.nama.toLowerCase() === nama.toLowerCase() &&
+    p.kelas.toLowerCase() === kelas.toLowerCase()
+  ).length;
+
+  if (jumlahEkskulDiikuti >= 2) {
+    return {
+        galatUmum: `Pendaftaran ditolak. sudah mengikuti maksimal 2 ekskul.`,
+        nama,
+        kelas,
+    };
+  }
+
   if (bentrok) {
     const ekskulBentrok = ekskul.find((e) => e.id === bentrok.ekskulId);
     return {
@@ -85,18 +100,19 @@ export async function aksiDaftar(
     };
   }
 
-  // 6. Simpan data pendaftaran baru menggunakan fungsi tambahPendaftar
+  // Simpan data pendaftaran baru menggunakan fungsi tambahPendaftar
   const nomorBaru = tambahPendaftar({ ekskulId, nama, kelas });
   const jamSesi = JAM_SESI[targetEkskul.sesi] || "";
 
-  // 7. Simpan nama & kelas ke cookie agar otomatis terisi di halaman ekskul lain
+  // Simpan nama & kelas ke cookie agar otomatis terisi di halaman ekskul lain
   const cookieStore = await cookies();
   cookieStore.set("nama", nama, { path: "/" });
   cookieStore.set("kelas", kelas, { path: "/" });
 
-  // 8. Revalidate halaman detail dan halaman katalog ekskul agar langsung diperbarui
+  // Revalidate halaman terkait agar langsung diperbarui tanpa F5
   revalidatePath(`/ekskul/${ekskulId}`);
   revalidatePath("/ekskul");
+  revalidatePath("/saya");
 
   return {
     sukses: true,
@@ -104,4 +120,37 @@ export async function aksiDaftar(
     nama,
     kelas,
   };
+}
+
+// 2. Server Action untuk Membatalkan Pendaftaran Ekskul
+export async function aksiBatalkan(formData: FormData) {
+  const nomorPendaftaran = Number(formData.get("nomor"));
+
+  // Ambil cookie nama dan kelas untuk verifikasi kepemilikan
+  const cookieStore = await cookies();
+  const namaCookie = cookieStore.get("nama")?.value;
+  const kelasCookie = cookieStore.get("kelas")?.value;
+
+  if (!namaCookie || !kelasCookie) return;
+
+  // Cari data pendaftaran berdasarkan nomor
+  const index = pendaftar.findIndex((p) => p.nomor === nomorPendaftaran);
+  if (index === -1) return;
+
+  const targetPendaftar = pendaftar[index];
+
+  // Verifikasi ulang bahwa pendaftaran tersebut benar-benar milik murid di cookie
+  const milikSendiri =
+    targetPendaftar.nama.toLowerCase() === namaCookie.toLowerCase() &&
+    targetPendaftar.kelas.toLowerCase() === kelasCookie.toLowerCase();
+
+  if (!milikSendiri) return;
+
+  // Hapus dari array pendaftar (memori server)
+  pendaftar.splice(index, 1);
+
+  // Revalidate halaman /saya, detail ekskul terkait, dan katalog /ekskul
+  revalidatePath("/saya");
+  revalidatePath(`/ekskul/${targetPendaftar.ekskulId}`);
+  revalidatePath("/ekskul");
 }
