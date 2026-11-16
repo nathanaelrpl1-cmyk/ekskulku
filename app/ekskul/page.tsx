@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { ambilSemuaEkskul } from "@/data/ambil";
-import Link from "next/link";
 import KontrolEkskul from "@/components/KontrolEkskul";
+import KartuEkskul from "@/components/KartuEkskul";
 import { pendaftar } from "@/data/ekskul";
 
 export const metadata: Metadata = {
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 type Props = {
-    searchParams: Promise<{ kategori?: string; hari?: string }>;
+  searchParams: Promise<{ kategori?: string; hari?: string }>;
 };
 
 export default async function HalamanEkskul({ searchParams }: Props) {
@@ -37,36 +37,14 @@ export default async function HalamanEkskul({ searchParams }: Props) {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {hasilFilter.map((item) => {
-            // Hitung jumlah pendaftar untuk ekskul ini
             const jumlahPendaftar = pendaftar.filter((p) => p.ekskulId === item.id).length;
-            const sisa = item.kuota - jumlahPendaftar;
-            const isPenuh = sisa <= 0;
 
             return (
-              <Link
+              <KartuEkskul
                 key={item.id}
-                href={`/ekskul/${item.id}`}
-                className="rounded-xl border bg-white p-5 shadow-sm space-y-2 hover:border-blue-400 transition block"
-              >
-                <div className="flex justify-between items-start">
-                  <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 font-medium">
-                    {item.kategori}
-                  </span>
-                  <span
-                    className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                      isPenuh ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {isPenuh ? "Penuh" : `Sisa ${sisa} dari ${item.kuota} tempat`}
-                  </span>
-                </div>
-
-                <h2 className="text-xl font-semibold">{item.nama}</h2>
-                <p className="text-sm text-slate-500">
-                  {item.hari} — Sesi {item.sesi}
-                </p>
-                <p className="text-sm text-slate-600">Pembina: {item.pembina}</p>
-              </Link>
+                ekskul={item}
+                jumlahPendaftar={jumlahPendaftar}
+              />
             );
           })}
         </div>

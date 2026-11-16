@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { ambilEkskul, ambilAnggota } from "@/data/ambil";
 import { pendaftar } from "@/data/ekskul";
+import FormDaftar from "@/components/FormDaftar";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -70,6 +71,11 @@ export default async function HalamanDetailEkskul({ params }: Props) {
   // Hitung jumlah pendaftar untuk informasi kuota
   const jumlahTerisi = pendaftar.filter((p) => p.ekskulId === item.id).length;
 
+  // Ambil data cookie nama & kelas untuk pre-fill FormDaftar
+  const cookieStore = await cookies();
+  const namaAwal = cookieStore.get("nama")?.value ?? "";
+  const kelasAwal = cookieStore.get("kelas")?.value ?? "";
+
   return (
     <div className="space-y-6">
       {/* Informasi Utama Ekskul (Tampil Cepat) */}
@@ -89,6 +95,13 @@ export default async function HalamanDetailEkskul({ params }: Props) {
       <Suspense fallback={<p className="text-sm text-slate-500 animate-pulse">Memuat anggota...</p>}>
         <DaftarAnggotaEkskul ekskulId={item.id} />
       </Suspense>
+
+      {/* Formulir Pendaftaran Ekskul */}
+      <FormDaftar
+        ekskulId={item.id}
+        namaAwal={namaAwal}
+        kelasAwal={kelasAwal}
+      />
     </div>
   );
 }
